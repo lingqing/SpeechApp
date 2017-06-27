@@ -1,21 +1,24 @@
 package com.example.liang.speechapp;
 
 import android.app.Activity;
-import android.os.Message;
-import android.provider.ContactsContract;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.liang.ui.DynamicWave;
+import com.example.liang.speechapp.Util.ApkInstaller;
+import com.example.liang.speechapp.Util.FucUtil;
+import com.example.liang.speechapp.Util.JsonParser;
+import com.example.liang.speechapp.ui.DynamicWave;
+import com.example.liang.speechapp.ui.SmoothLinearLayoutManager;
 import com.iflytek.cloud.ErrorCode;
 import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.RecognizerListener;
@@ -28,22 +31,18 @@ import com.iflytek.cloud.SpeechUtility;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.example.liang.speechapp.R;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
-import android.os.Handler;
+public class MainActivity extends Activity implements View.OnClickListener{
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener{
-
-    //
+    //const
     private static String TAG = MainActivity.class.getSimpleName();
     private static String SPE = "SPEECH";
+    private static int fontSize = 20;
+    private static String engineType = "cloud";
     private Toast mToast;
     private boolean isNewTxt = false;
     private boolean isUserEnd = true;
@@ -60,17 +59,72 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private SpeechRecognizer recognizer;
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
 
-
+    //setting file
+    private SharedPreferences settingPref;
+    // local apk yuji installer
+    ApkInstaller mInstaller;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        requestWindowFeature(Window.FEATURE_RIGHT_ICON);
+//        requestWindowFeature(Window.FEATURE_RIGHT_ICON);
 
         setContentView(R.layout.active_main);
 
         initLayout();
         SpeechConfig();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_activity_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.setting:
+                Intent intent = new Intent(MainActivity.this, SettingActivity.class);
+                startActivityForResult(intent, 1);
+                break;
+            default:
+                break;
+        }
+        return true;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode){
+            case 1:
+                if(resultCode == RESULT_OK){
+//                    String engine_type = data.getStringExtra("engine_type");
+//                    Log.d(TAG, "set engine type to : " + engine_type);
+                    SharedPreferences pref = getSharedPreferences(getString(R.string.setting_file), MODE_PRIVATE);
+                    fontSize = pref.getInt("font_size", fontSize);
+                    engineType = pref.getString("engine_type", engineType);
+                    // check yuji install
+                    if(engineType != "cloud"){
+                        if(!SpeechUtility.getUtility().checkServiceInstalled()){
+                            mInstaller.install();
+                        }
+                        else {
+                            String result = FucUtil.checkLocalResource();
+                            if(!TextUtils.isEmpty(result)){
+                                showTip(result);
+                            }
+                        }
+                    }
+                    setParam();
+                    adapter.setTextSize(fontSize);
+                    adapter.notifyDataSetChanged();
+                }
+//                else Log.d(TAG, " cancel setting! ");
+                break;
+            default:
+                break;
+        }
     }
 
     @Override
@@ -86,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         resultRecyclerView = (RecyclerView)findViewById(R.id.result_bg_id);
         wave = (DynamicWave)findViewById(R.id.wave);
         txtState = (TextView)findViewById(R.id.txt_state);
-        LinearLayoutManager manager = new LinearLayoutManager(this);
+        SmoothLinearLayoutManager manager = new SmoothLinearLayoutManager(MainActivity.this);
         resultRecyclerView.setLayoutManager(manager);
 //        mResultTxtList.add(new ResultTxt("你好"));
         adapter = new ResultTxtAdapter(mResultTxtList);
@@ -98,10 +152,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         SpeechUtility.createUtility(MainActivity.this, SpeechConstant.APPID +"=59310ed0");
 
         recognizer = SpeechRecognizer.createRecognizer(MainActivity.this, initListener);
+
+        SharedPreferences pref = getSharedPreferences(getString(R.string.setting_file), MODE_PRIVATE);
+        engineType = pref.getString("engine_type", engineType);
+        fontSize = pref.getInt("font_size", fontSize);
+        adapter.setTextSize(fontSize);
+
+        setParam();
         recognizer.setParameter(SpeechConstant.DOMAIN, "iat");
+    }
+
+    private void setParam(){
+        // clear
+        recognizer.setParameter(SpeechConstant.PARAMS, null);
+        // engine
+        recognizer.setParameter(SpeechConstant.ENGINE_TYPE, engineType);
+        recognizer.setParameter(SpeechConstant.RESULT_TYPE, "json");
         recognizer.setParameter(SpeechConstant.LANGUAGE, "zh_cn");
-        recognizer.setParameter(SpeechConstant.ACCENT, "mandarin");
-        recognizer.setParameter(SpeechConstant.RESULT_TYPE,"json");
     }
 
     @Override
@@ -161,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             wave.setFactor(0);
             isNewTxt = true;
             mIatResults.clear();
-            if(mResultTxtList.size()>=5){
+            if(mResultTxtList.size()>=10){
                 mResultTxtList.remove(0);
             }
 //            mResultTxtList.add(new ResultTxt(""));
@@ -183,10 +250,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(isNewTxt){
                 mResultTxtList.add(new ResultTxt(""));
                 adapter.notifyItemInserted(mResultTxtList.size()-1);
-                resultRecyclerView.smoothScrollToPosition(mResultTxtList.size()-1);
                 isNewTxt = false;
             }
             printResult(recognizerResult);
+            resultRecyclerView.smoothScrollToPosition(mResultTxtList.size()-1);
         }
 
         @Override

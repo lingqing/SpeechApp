@@ -13,7 +13,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="50dp">
-        <com.example.liang.ui.DynamicWave
+        <com.example.liang.speechapp.ui.DynamicWave
             android:id="@+id/wave"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />

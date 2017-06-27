@@ -1,6 +1,7 @@
 package com.example.liang.speechapp;
 
 import android.support.v7.widget.RecyclerView;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,7 @@ import java.util.List;
 
 public class ResultTxtAdapter extends RecyclerView.Adapter<ResultTxtAdapter.ViewHolder>{
     private List<ResultTxt> resultTxtList;
+    private static int font_size = 20;
 
     static class ViewHolder extends RecyclerView.ViewHolder{
 
@@ -40,11 +42,16 @@ public class ResultTxtAdapter extends RecyclerView.Adapter<ResultTxtAdapter.View
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         ResultTxt txt = resultTxtList.get(position);
+        holder.resultTxtView.setTextSize(TypedValue.COMPLEX_UNIT_SP, font_size);
         holder.resultTxtView.setText(txt.getContent());
     }
 
     @Override
     public int getItemCount() {
         return resultTxtList.size();
+    }
+
+    public void setTextSize(int size){
+        font_size = size;
     }
 }

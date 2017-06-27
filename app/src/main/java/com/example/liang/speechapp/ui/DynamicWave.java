@@ -1,5 +1,5 @@
 
-package com.example.liang.ui;
+package com.example.liang.speechapp.ui;
 
 import android.content.Context;
 import android.graphics.Canvas;
