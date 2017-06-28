@@ -167,6 +167,8 @@ public class MainActivity extends Activity implements View.OnClickListener{
         recognizer.setParameter(SpeechConstant.PARAMS, null);
         // engine
         recognizer.setParameter(SpeechConstant.ENGINE_TYPE, engineType);
+//        recognizer.setParameter(SpeechConstant.LOCAL_GRAMMAR, "call");
+//        recognizer.setParameter(SpeechConstant.ASR_THRESHOLD, "30");
         recognizer.setParameter(SpeechConstant.RESULT_TYPE, "json");
         recognizer.setParameter(SpeechConstant.LANGUAGE, "zh_cn");
     }
